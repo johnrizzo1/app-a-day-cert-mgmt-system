@@ -1,0 +1,59 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.certificate-card {
+  transition: transform 0.3s;
+}
+
+.certificate-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.page-container {
+  padding: 20px;
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.certificate-detail {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.certificate-detail pre {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.certificate-status-active {
+  color: #28a745;
+}
+
+.certificate-status-revoked {
+  color: #dc3545;
+}
+
+.certificate-status-expired {
+  color: #ffc107;
+}
