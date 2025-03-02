@@ -25,17 +25,16 @@ git clone https://github.com/yourusername/certificate-management-system.git
 cd certificate-management-system/backend
 ```
 
-2. Create a virtual environment:
+2. Install Poetry (if not already installed):
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+curl -sSL https://install.python-poetry.org | python3 -
 ```
 
 3. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
 
 4. Set up the database:
@@ -72,6 +71,13 @@ DEBUG=True
 To run the application locally:
 
 ```bash
+poetry run uvicorn app.main:app --reload
+```
+
+Or, if you've activated the Poetry shell:
+
+```bash
+poetry shell
 uvicorn app.main:app --reload
 ```
 
@@ -100,7 +106,7 @@ To run the tests:
 createdb test_certificate_db
 
 # Run tests
-pytest
+poetry run pytest
 ```
 
 ## Database Migrations
@@ -108,13 +114,13 @@ pytest
 To create a new migration:
 
 ```bash
-alembic revision --autogenerate -m "Description of changes"
+poetry run alembic revision --autogenerate -m "Description of changes"
 ```
 
 To apply migrations:
 
 ```bash
-alembic upgrade head
+poetry run alembic upgrade head
 ```
 
 ## License

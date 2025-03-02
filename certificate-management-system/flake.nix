@@ -4,54 +4,36 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    devenv.url = "github:cachix/devenv";
     process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
+    poetry2nix = {
+      url = "github:nix-community/poetry2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ flake-parts, ... }:
+  outputs = inputs@{ flake-parts, poetry2nix, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [
-        inputs.devenv.flakeModule
-      ];
-      
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       
       perSystem = { config, self', inputs', pkgs, system, ... }: {
+        # Import poetry2nix
+        _module.args.pkgs = import inputs.nixpkgs {
+          inherit system;
+          overlays = [
+            poetry2nix.overlays.default
+          ];
+        };
         # Packages
         packages = {
           default = self'.packages.backend;
           
-          backend = pkgs.python3Packages.buildPythonApplication {
-            pname = "certificate-management-system-backend";
-            version = "0.1.0";
+          backend = pkgs.poetry2nix.mkPoetryApplication {
+            projectDir = ./backend;
             
-            src = ./backend;
-            
-            propagatedBuildInputs = with pkgs.python3Packages; [
-              fastapi
-              uvicorn
-              sqlalchemy
-              alembic
-              pydantic
-              asyncpg
-              psycopg2
-              python-jose
-              passlib
-              python-multipart
-              pyopenssl
-              cryptography
-              python-dotenv
-            ];
-            
-            checkInputs = with pkgs.python3Packages; [
-              pytest
-              pytest-asyncio
-              httpx
-            ];
-            
-            checkPhase = ''
-              pytest
-            '';
+            # Override dependencies if needed
+            overrides = pkgs.poetry2nix.overrides.withDefaults (final: prev: {
+              # Add any package overrides here if needed
+            });
             
             meta = with pkgs.lib; {
               description = "Backend service for managing X509 certificates";
@@ -130,22 +112,12 @@
           };
         };
         
-        # Development environment using devenv.sh
-        devenv.shells.default = {
-          name = "certificate-management-system";
-          
-          # Specify the path to the project root
-          # This helps devenv determine the current directory
-          # env.DEVENV_ROOT = "${toString ./.}";
-          
-          # Import packages
-          packages = with pkgs; [
+        # Development shell
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
             # Python and dependencies
             python3
-            python3Packages.pip
-            python3Packages.virtualenv
-            python3Packages.setuptools
-            python3Packages.wheel
+            poetry
             
             # PostgreSQL
             postgresql
@@ -162,52 +134,48 @@
             process-compose
           ];
           
-          # Environment variables
-          env = {
-            PYTHONPATH = "./backend";
-          };
-          
-          # Languages
-          languages = {
-            python = {
-              enable = true;
-              package = pkgs.python3;
-              venv = {
-                enable = true;
-                requirements = "./backend/requirements.txt";
-              };
-            };
+          shellHook = ''
+            # Initialize Poetry environment if needed
+            if [ ! -f "backend/poetry.lock" ]; then
+              echo "Initializing Poetry environment..."
+              cd backend && poetry install
+            fi
             
-            javascript = {
-              enable = true;
-              package = pkgs.nodejs;
-            };
-          };
-          
-          # Services
-          services = {
-            postgres = {
-              enable = true;
-              package = pkgs.postgresql;
-              initialDatabases = [{ name = "certificate_db"; }];
-              initialScript = "CREATE USER postgres WITH SUPERUSER PASSWORD 'postgres';";
-              listen_addresses = "127.0.0.1";
-              port = 5432;
-            };
-          };
-          
-          # Scripts
-          scripts = {
-            run-dev.exec = "cd backend && uvicorn app.main:app --reload";
-            run-tests.exec = "cd backend && pytest";
-            create-migration.exec = "cd backend && alembic revision --autogenerate -m \"$1\"";
-            apply-migrations.exec = "cd backend && alembic upgrade head";
-            build-app.exec = "cd backend && python -m build";
-            run-all.exec = "${self'.packages.process-compose}/bin/process-compose up";
-          };
-          
-          # Enter message
-          enterShell = ''
+            # Set up environment variables
+            export PYTHONPATH="./backend:$PYTHONPATH"
+            
+            # Use Poetry for Python environment
+            alias python="poetry run python"
+            alias pytest="poetry run pytest"
+            alias uvicorn="poetry run uvicorn"
+            alias alembic="poetry run alembic"
+            
+            # Define helper functions
+            function run-dev {
+              cd backend && poetry run uvicorn app.main:app --reload
+            }
+            
+            function run-tests {
+              cd backend && poetry run pytest
+            }
+            
+            function create-migration {
+              cd backend && poetry run alembic revision --autogenerate -m "$1"
+            }
+            
+            function apply-migrations {
+              cd backend && poetry run alembic upgrade head
+            }
+            
+            function build-app {
+              cd backend && poetry build
+            }
+            
+            function run-all {
+              process-compose up
+            }
+            
+            # Print welcome message
             echo "Certificate Management System - Development Environment"
             echo "======================================================="
             echo "Available commands:"
