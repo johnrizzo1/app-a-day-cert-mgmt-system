@@ -46,7 +46,7 @@ To run the application in development mode:
 npm start
 ```
 
-The application will be available at http://localhost:3000.
+The application will be available at http://localhost:3001.
 
 ## Building for Production
 

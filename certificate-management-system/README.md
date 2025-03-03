@@ -122,7 +122,7 @@ process-compose up
 This will start:
 - PostgreSQL database on the default port (5432)
 - Backend API server on http://localhost:8000
-- Web frontend on http://localhost:3000
+- Web frontend on http://localhost:3001
 
 #### Using devenv Services
 

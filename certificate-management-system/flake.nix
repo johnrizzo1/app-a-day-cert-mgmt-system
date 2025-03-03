@@ -80,67 +80,67 @@
           ];
 
           # PostgreSQL service
-          services.postgres = {
-            enable = true;
-            package = pkgs.postgresql;
-            initialDatabases = [{ name = "certificate_db"; }];
-            initialScript = "CREATE USER postgres SUPERUSER PASSWORD 'postgres';";
-            listen_addresses = "127.0.0.1";
-            port = 5432;
-          };
+          # services.postgres = {
+          #   enable = true;
+          #   package = pkgs.postgresql;
+          #   initialDatabases = [{ name = "certificate_db"; }];
+          #   initialScript = "CREATE USER postgres SUPERUSER PASSWORD 'postgres';";
+          #   listen_addresses = "127.0.0.1";
+          #   port = 5432;
+          # };
 
-          services.prometheus = {
-            enable = true;
-            globalConfig = {
-              scrape_interval = "15s";
-            };
-            scrapeConfigs = [
-              {
-                job_name = "certificate_management_system";
-                static_configs = [
-                  {
-                    targets = ["localhost:8889"];
-                  }
-                ];
-              }
-            ];
-          };
+          # services.prometheus = {
+          #   enable = true;
+          #   globalConfig = {
+          #     scrape_interval = "15s";
+          #   };
+          #   scrapeConfigs = [
+          #     {
+          #       job_name = "certificate_management_system";
+          #       static_configs = [
+          #         {
+          #           targets = ["localhost:8889"];
+          #         }
+          #       ];
+          #     }
+          #   ];
+          # };
 
-          services.opentelemetry-collector = {
-            enable = true;
-            settings = {
-              receivers = {
-                otlp = {
-                  protocols = {
-                    grpc = {};
-                    http = {};
-                  };
-                };
-              };
-              exporters = {
-                endpoint = {
-                  prometheus = {
-                    endpoint = "0.0.0.0:8889";
-                    namespace = "certificate_management_system";
-                  };
-                };
-              };
-              extensions = {
-                health_check = {
-                  endpoint = "localhost:13133";
-                };
-              };
-              service = {
-                extensions = ["health_check"];
-                pipelines = {
-                  traces = {
-                    # receivers = ["otlp"];
-                    exporters = ["prometheus"];
-                  };
-                };
-              };
-            };
-          };
+          # services.opentelemetry-collector = {
+          #   enable = true;
+          #   settings = {
+          #     receivers = {
+          #       otlp = {
+          #         protocols = {
+          #           grpc = {};
+          #           http = {};
+          #         };
+          #       };
+          #     };
+          #     exporters = {
+          #       endpoint = {
+          #         prometheus = {
+          #           endpoint = "0.0.0.0:8889";
+          #           namespace = "certificate_management_system";
+          #         };
+          #       };
+          #     };
+          #     extensions = {
+          #       health_check = {
+          #         endpoint = "localhost:13133";
+          #       };
+          #     };
+          #     service = {
+          #       extensions = ["health_check"];
+          #       pipelines = {
+          #         traces = {
+          #           # receivers = ["otlp"];
+          #           exporters = ["prometheus"];
+          #         };
+          #       };
+          #     };
+          #   };
+          # };
 
           # Environment variables
           env = {
@@ -153,7 +153,7 @@
             APP_VERSION = "0.1.0";
             DEBUG = "True";
             REACT_APP_API_URL = "http://localhost:8000/api";
-            PORT = "3000";
+            PORT = "3001";
           };
 
           # Scripts and processes

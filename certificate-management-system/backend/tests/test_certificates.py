@@ -169,3 +169,46 @@ async def test_delete_certificate(client: AsyncClient, db_session: AsyncSession)
     # Verify certificate is deleted
     response = await client.get(f"/api/certificates/{certificate.id}")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_generate_x509_certificate(client: AsyncClient, db_session: AsyncSession):
+    """Test the X.509 certificate generation functionality"""
+    # Create test certificate
+    certificate_in = CertificateCreate(
+        common_name="test-x509.example.com",
+        organization="Test Organization",
+        organizational_unit="IT Department",
+        country="US",
+        state_province="California",
+        locality="San Francisco",
+        not_before=datetime.utcnow(),
+        not_valid_after=datetime.utcnow() + timedelta(days=365),
+        signature_algorithm="sha256",
+        key_size=2048,
+        is_ca=False,
+        status="active",
+        extensions=[]
+    )
+    certificate = await create_certificate(db=db_session, certificate_in=certificate_in)
+    
+    # Send POST request to generate certificate
+    response = await client.post(f"/api/certificates/{certificate.id}/generate")
+    
+    # Check response
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == certificate.id
+    assert data["certificate_data"] is not None
+    assert "-----BEGIN CERTIFICATE-----" in data["certificate_data"]
+    assert "-----END CERTIFICATE-----" in data["certificate_data"]
+    
+    # Verify certificate data contains expected information
+    cert_data = data["certificate_data"]
+    assert len(cert_data) > 0
+    
+    # Get the certificate again to verify it was saved
+    response = await client.get(f"/api/certificates/{certificate.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["certificate_data"] is not None

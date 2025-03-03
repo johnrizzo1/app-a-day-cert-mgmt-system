@@ -156,35 +156,38 @@ async def generate_x509_certificate(
         backend=default_backend()
     )
     
-    # Create subject name
-    subject_name = x509.Name([
+    # Create subject name by collecting all attributes first
+    name_attributes = [
         x509.NameAttribute(NameOID.COMMON_NAME, certificate.common_name)
-    ])
+    ]
     
     if certificate.organization:
-        subject_name._attributes.append(
+        name_attributes.append(
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, certificate.organization)
         )
     
     if certificate.organizational_unit:
-        subject_name._attributes.append(
+        name_attributes.append(
             x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, certificate.organizational_unit)
         )
     
     if certificate.country:
-        subject_name._attributes.append(
+        name_attributes.append(
             x509.NameAttribute(NameOID.COUNTRY_NAME, certificate.country)
         )
     
     if certificate.state_province:
-        subject_name._attributes.append(
+        name_attributes.append(
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, certificate.state_province)
         )
     
     if certificate.locality:
-        subject_name._attributes.append(
+        name_attributes.append(
             x509.NameAttribute(NameOID.LOCALITY_NAME, certificate.locality)
         )
+    
+    # Create the Name object with the complete list of attributes
+    subject_name = x509.Name(name_attributes)
     
     # Create certificate builder
     cert_builder = x509.CertificateBuilder(
