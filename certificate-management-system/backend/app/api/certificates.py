@@ -90,7 +90,7 @@ async def update_existing_certificate(
     return certificate
 
 
-@router.delete("/{certificate_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{certificate_id}") # , status_code=status.HTTP_204_NO_CONTENT)
 async def delete_existing_certificate(
     *,
     db: AsyncSession = Depends(get_db),

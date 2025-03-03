@@ -2,18 +2,22 @@
   description = "Certificate Management System";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
+    devenv.url = "github:cachix/devenv";
     poetry2nix = {
       url = "github:nix-community/poetry2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = inputs@{ flake-parts, poetry2nix, ... }:
+  outputs = inputs@{ flake-parts, poetry2nix, devenv, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      
+      imports = [
+        inputs.devenv.flakeModule
+      ];
       
       perSystem = { config, self', inputs', pkgs, system, ... }: {
         # Import poetry2nix
@@ -23,6 +27,7 @@
             poetry2nix.overlays.default
           ];
         };
+
         # Packages
         packages = {
           default = self'.packages.backend;
@@ -37,62 +42,8 @@
             
             meta = with pkgs.lib; {
               description = "Backend service for managing X509 certificates";
-              homepage = "https://github.com/yourusername/certificate-management-system";
+              homepage = "https://github.com/johnrizzo1/certificate-management-system";
               license = licenses.mit;
-            };
-          };
-          
-          # Process compose configuration
-          process-compose = inputs.process-compose-flake.lib.${system}.mkProcessCompose {
-            name = "certificate-management-system";
-            processes = {
-              postgres = {
-                command = "${pkgs.postgresql}/bin/postgres -D ./.postgres";
-                readiness_probe = {
-                  exec.command = "${pkgs.postgresql}/bin/pg_isready -h localhost -p 5432 -U postgres";
-                  initial_delay_seconds = 2;
-                  period_seconds = 5;
-                  timeout_seconds = 2;
-                  success_threshold = 1;
-                  failure_threshold = 3;
-                };
-                environment = {
-                  POSTGRES_USER = "postgres";
-                  POSTGRES_PASSWORD = "postgres";
-                  POSTGRES_DB = "certificate_db";
-                };
-                setup.command = ''
-                  mkdir -p ./.postgres
-                  if [ ! -f ./.postgres/PG_VERSION ]; then
-                    ${pkgs.postgresql}/bin/initdb -D ./.postgres -U postgres --auth=trust
-                    echo "listen_addresses = '*'" >> ./.postgres/postgresql.conf
-                    echo "host all all 0.0.0.0/0 trust" >> ./.postgres/pg_hba.conf
-                  fi
-                '';
-              };
-              
-              backend = {
-                command = "cd backend && ${pkgs.python3}/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000";
-                depends_on.postgres.condition = "process_healthy";
-                environment = {
-                  DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/certificate_db";
-                  SECRET_KEY = "your-secret-key-here";
-                  ALGORITHM = "HS256";
-                  ACCESS_TOKEN_EXPIRE_MINUTES = "30";
-                  APP_NAME = "Certificate Management System";
-                  APP_VERSION = "0.1.0";
-                  DEBUG = "True";
-                };
-              };
-              
-              frontend = {
-                command = "cd web-frontend && ${pkgs.nodejs}/bin/npm start";
-                depends_on.backend.condition = "process_started";
-                environment = {
-                  PORT = "3000";
-                  REACT_APP_API_URL = "http://localhost:8000/api";
-                };
-              };
             };
           };
         };
@@ -105,16 +56,13 @@
             type = "app";
             program = "${self'.packages.backend}/bin/certificate-management-system-backend";
           };
-          
-          process-compose = {
-            type = "app";
-            program = "${self'.packages.process-compose}/bin/process-compose";
-          };
         };
-        
-        # Development shell
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
+
+        # Development environment using devenv
+        devenv.shells.default = {
+          name = "certificate-management-system";
+
+          packages = with pkgs; [
             # Python and dependencies
             python3
             poetry
@@ -129,30 +77,109 @@
             # Node.js for frontend
             nodejs
             yarn
-            
-            # Process compose
-            process-compose
           ];
-          
-          shellHook = ''
+
+          # PostgreSQL service
+          services.postgres = {
+            enable = true;
+            package = pkgs.postgresql;
+            initialDatabases = [{ name = "certificate_db"; }];
+            initialScript = "CREATE USER postgres SUPERUSER PASSWORD 'postgres';";
+            listen_addresses = "127.0.0.1";
+            port = 5432;
+          };
+
+          services.prometheus = {
+            enable = true;
+            globalConfig = {
+              scrape_interval = "15s";
+            };
+            scrapeConfigs = [
+              {
+                job_name = "certificate_management_system";
+                static_configs = [
+                  {
+                    targets = ["localhost:8889"];
+                  }
+                ];
+              }
+            ];
+          };
+
+          services.opentelemetry-collector = {
+            enable = true;
+            settings = {
+              receivers = {
+                otlp = {
+                  protocols = {
+                    grpc = {};
+                    http = {};
+                  };
+                };
+              };
+              exporters = {
+                endpoint = {
+                  prometheus = {
+                    endpoint = "0.0.0.0:8889";
+                    namespace = "certificate_management_system";
+                  };
+                };
+              };
+              extensions = {
+                health_check = {
+                  endpoint = "localhost:13133";
+                };
+              };
+              service = {
+                extensions = ["health_check"];
+                pipelines = {
+                  traces = {
+                    # receivers = ["otlp"];
+                    exporters = ["prometheus"];
+                  };
+                };
+              };
+            };
+          };
+
+          # Environment variables
+          env = {
+            PYTHONPATH = "./backend:$PYTHONPATH";
+            DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/certificate_db";
+            SECRET_KEY = "your-secret-key-here";
+            ALGORITHM = "HS256";
+            ACCESS_TOKEN_EXPIRE_MINUTES = "30";
+            APP_NAME = "Certificate Management System";
+            APP_VERSION = "0.1.0";
+            DEBUG = "True";
+            REACT_APP_API_URL = "http://localhost:8000/api";
+            PORT = "3000";
+          };
+
+          # Scripts and processes
+          processes = {
+            backend.exec = "cd backend && poetry run hypercorn app.main:app --reload --bind 0.0.0.0:8000";
+            frontend.exec = "cd web-frontend && npm start";
+          };
+
+          # Shell hook for additional setup
+          enterShell = ''
+            echo 'Setting up development environment...'
             # Initialize Poetry environment if needed
             if [ ! -f "backend/poetry.lock" ]; then
               echo "Initializing Poetry environment..."
               cd backend && poetry install
+              cd ..
             fi
-            
-            # Set up environment variables
-            export PYTHONPATH="./backend:$PYTHONPATH"
             
             # Use Poetry for Python environment
             alias python="poetry run python"
             alias pytest="poetry run pytest"
-            alias uvicorn="poetry run uvicorn"
             alias alembic="poetry run alembic"
             
             # Define helper functions
             function run-dev {
-              cd backend && poetry run uvicorn app.main:app --reload
+              cd backend && poetry run hypercorn app.main:app --reload --bind 0.0.0.0:8000
             }
             
             function run-tests {
@@ -171,20 +198,16 @@
               cd backend && poetry build
             }
             
-            function run-all {
-              process-compose up
-            }
-            
             # Print welcome message
             echo "Certificate Management System - Development Environment"
             echo "======================================================="
             echo "Available commands:"
+            echo "  devenv up          - Start all services"
             echo "  run-dev            - Run the backend development server"
             echo "  run-tests          - Run backend tests"
             echo "  create-migration   - Create a new database migration"
             echo "  apply-migrations   - Apply database migrations"
             echo "  build-app          - Build the backend application"
-            echo "  run-all            - Run all services with process-compose"
             echo ""
           '';
         };

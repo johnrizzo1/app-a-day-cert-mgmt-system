@@ -1,8 +1,21 @@
 from fastapi import FastAPI
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router
 from app.core.config import settings
+
+# Initialize OpenTelemetry
+resource = Resource(attributes={
+    SERVICE_NAME: "certificate-management-system"
+})
+provider = TracerProvider(resource=resource)
+processor = BatchSpanProcessor(OTLPSpanExporter())
+provider.add_span_processor(processor)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -23,6 +36,7 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api")
 
+FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
 
 @app.get("/")
 async def root():
@@ -33,6 +47,12 @@ async def root():
 
 
 if __name__ == "__main__":
-    import uvicorn
+    from hypercorn.config import Config
+    from hypercorn.asyncio import serve
+    import asyncio
 
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    config = Config()
+    config.bind = ["0.0.0.0:8000"]
+    config.use_reloader = True
+
+    asyncio.run(serve(app, config))

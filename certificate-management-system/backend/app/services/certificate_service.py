@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from cryptography import x509
@@ -126,7 +126,7 @@ async def update_certificate(
     for field, value in update_data.items():
         setattr(certificate, field, value)
     
-    certificate.updated_at = datetime.utcnow()
+    certificate.updated_at = datetime.now(timezone.utc)
     
     db.add(certificate)
     await db.commit()
@@ -222,7 +222,7 @@ async def generate_x509_certificate(
     
     # Update the certificate data
     certificate.certificate_data = cert_pem
-    certificate.updated_at = datetime.utcnow()
+    certificate.updated_at = datetime.now(timezone.utc)
     
     db.add(certificate)
     await db.commit()

@@ -51,7 +51,7 @@ alembic upgrade head
 
 The application is configured using environment variables. You can set these in the `.env` file:
 
-```
+```bash
 # Database settings
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/certificate_db
 
@@ -61,7 +61,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # Application settings
-APP_NAME=Certificate Management System
+APP_NAME="Certificate Management System"
 APP_VERSION=0.1.0
 DEBUG=True
 ```
@@ -71,14 +71,14 @@ DEBUG=True
 To run the application locally:
 
 ```bash
-poetry run uvicorn app.main:app --reload
+poetry run hypercorn app.main:app --reload --bind 0.0.0.0:8000
 ```
 
 Or, if you've activated the Poetry shell:
 
 ```bash
 poetry shell
-uvicorn app.main:app --reload
+hypercorn app.main:app --reload --bind 0.0.0.0:8000
 ```
 
 The API will be available at http://localhost:8000.

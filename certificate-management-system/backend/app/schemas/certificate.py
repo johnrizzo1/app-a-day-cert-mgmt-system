@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 
 class CertificateExtensionBase(BaseModel):
@@ -30,8 +30,14 @@ class CertificateBase(BaseModel):
     country: Optional[str] = None
     state_province: Optional[str] = None
     locality: Optional[str] = None
-    not_before: datetime = Field(default_factory=datetime.utcnow)
+    not_before: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     not_valid_after: datetime
+
+    @validator('not_valid_after')
+    def ensure_timezone_aware(cls, v):
+        if v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        return v
     signature_algorithm: str
     key_size: int
     is_ca: bool = False
