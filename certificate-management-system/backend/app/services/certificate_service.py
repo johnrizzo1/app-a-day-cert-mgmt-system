@@ -7,18 +7,17 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.certificate import Certificate, CertificateExtension
 from app.schemas.certificate import CertificateCreate, CertificateUpdate
 
 
-async def get_certificate(db: AsyncSession, certificate_id: int) -> Optional[Certificate]:
+def get_certificate(db: Session, certificate_id: int) -> Optional[Certificate]:
     """
     Get a certificate by ID
     """
-    result = await db.execute(
+    result = db.execute(
         select(Certificate)
         .options(selectinload(Certificate.extensions))
         .filter(Certificate.id == certificate_id)
@@ -26,18 +25,18 @@ async def get_certificate(db: AsyncSession, certificate_id: int) -> Optional[Cer
     return result.scalars().first()
 
 
-async def get_certificates(
-    db: AsyncSession, skip: int = 0, limit: int = 100
+def get_certificates(
+    db: Session, skip: int = 0, limit: int = 100
 ) -> Tuple[List[Certificate], int]:
     """
     Get a list of certificates with pagination
     """
     # Get total count
-    result = await db.execute(select(Certificate).order_by(Certificate.id))
+    result = db.execute(select(Certificate).order_by(Certificate.id))
     total = len(result.scalars().all())
     
     # Get paginated results
-    result = await db.execute(
+    result = db.execute(
         select(Certificate)
         .options(selectinload(Certificate.extensions))
         .order_by(Certificate.id)
@@ -49,8 +48,8 @@ async def get_certificates(
     return certificates, total
 
 
-async def create_certificate(
-    db: AsyncSession, certificate_in: CertificateCreate
+def create_certificate(
+    db: Session, certificate_in: CertificateCreate
 ) -> Certificate:
     """
     Create a new certificate
@@ -96,27 +95,27 @@ async def create_certificate(
     
     # Add to database
     db.add(certificate_data)
-    await db.flush()
+    db.flush()
     
     # Add extensions
-    for ext_in in certificate_in.extensions:
-        extension = CertificateExtension(
-            certificate_id=certificate_data.id,
-            oid=ext_in.oid,
-            name=ext_in.name,
-            value=ext_in.value,
-            critical=ext_in.critical
-        )
-        db.add(extension)
+    if certificate_in.extensions:
+        for ext_in in certificate_in.extensions:
+            extension = CertificateExtension(
+                certificate_id=certificate_data.id,
+                oid=ext_in.oid,
+                name=ext_in.name,
+                value=ext_in.value,
+                critical=ext_in.critical
+            )
+            db.add(extension)
     
-    await db.commit()
-    await db.refresh(certificate_data)
+    db.flush()
     
     return certificate_data
 
 
-async def update_certificate(
-    db: AsyncSession, certificate: Certificate, certificate_in: CertificateUpdate
+def update_certificate(
+    db: Session, certificate: Certificate, certificate_in: CertificateUpdate
 ) -> Certificate:
     """
     Update a certificate
@@ -129,22 +128,21 @@ async def update_certificate(
     certificate.updated_at = datetime.now(timezone.utc)
     
     db.add(certificate)
-    await db.commit()
-    await db.refresh(certificate)
+    db.flush()
     
     return certificate
 
 
-async def delete_certificate(db: AsyncSession, certificate: Certificate) -> None:
+def delete_certificate(db: Session, certificate: Certificate) -> None:
     """
     Delete a certificate
     """
-    await db.delete(certificate)
-    await db.commit()
+    db.delete(certificate)
+    db.flush()
 
 
-async def generate_x509_certificate(
-    db: AsyncSession, certificate: Certificate
+def generate_x509_certificate(
+    db: Session, certificate: Certificate
 ) -> Certificate:
     """
     Generate an X509 certificate from the stored data
@@ -228,7 +226,6 @@ async def generate_x509_certificate(
     certificate.updated_at = datetime.now(timezone.utc)
     
     db.add(certificate)
-    await db.commit()
-    await db.refresh(certificate)
+    db.flush()
     
     return certificate

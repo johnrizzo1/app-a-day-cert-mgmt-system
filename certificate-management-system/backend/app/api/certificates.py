@@ -1,7 +1,7 @@
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.certificate import Certificate
@@ -25,41 +25,48 @@ router = APIRouter()
 
 
 @router.get("/", response_model=CertificateList)
-async def read_certificates(
-    db: AsyncSession = Depends(get_db),
+def read_certificates(
+    db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ) -> Any:
     """
     Retrieve certificates with pagination.
     """
-    certificates, total = await get_certificates(db, skip=skip, limit=limit)
+    certificates, total = get_certificates(db, skip=skip, limit=limit)
     return {"certificates": certificates, "total": total}
 
 
 @router.post("/", response_model=CertificateSchema, status_code=status.HTTP_201_CREATED)
-async def create_new_certificate(
+def create_new_certificate(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     certificate_in: CertificateCreate,
 ) -> Any:
     """
     Create new certificate.
     """
-    certificate = await create_certificate(db=db, certificate_in=certificate_in)
-    return certificate
+    try:
+        # Create the certificate
+        certificate = create_certificate(db=db, certificate_in=certificate_in)
+        return certificate
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error creating certificate: {str(e)}")
+        # Re-raise to let FastAPI handle the response
+        raise
 
 
 @router.get("/{certificate_id}", response_model=CertificateSchema)
-async def read_certificate(
+def read_certificate(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     certificate_id: int,
 ) -> Any:
     """
     Get certificate by ID.
     """
-    certificate = await get_certificate(db=db, certificate_id=certificate_id)
+    certificate = get_certificate(db=db, certificate_id=certificate_id)
     if not certificate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -69,56 +76,56 @@ async def read_certificate(
 
 
 @router.put("/{certificate_id}", response_model=CertificateSchema)
-async def update_existing_certificate(
+def update_existing_certificate(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     certificate_id: int,
     certificate_in: CertificateUpdate,
 ) -> Any:
     """
     Update a certificate.
     """
-    certificate = await get_certificate(db=db, certificate_id=certificate_id)
+    certificate = get_certificate(db=db, certificate_id=certificate_id)
     if not certificate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Certificate not found",
         )
-    certificate = await update_certificate(
+    certificate = update_certificate(
         db=db, certificate=certificate, certificate_in=certificate_in
     )
     return certificate
 
 
 @router.delete("/{certificate_id}") # , status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_certificate(
+def delete_existing_certificate(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     certificate_id: int,
 ) -> Any:
     """
     Delete a certificate.
     """
-    certificate = await get_certificate(db=db, certificate_id=certificate_id)
+    certificate = get_certificate(db=db, certificate_id=certificate_id)
     if not certificate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Certificate not found",
         )
-    await delete_certificate(db=db, certificate=certificate)
+    delete_certificate(db=db, certificate=certificate)
     return None
 
 
 @router.post("/{certificate_id}/generate", response_model=CertificateSchema)
-async def generate_certificate(
+def generate_certificate(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     certificate_id: int,
 ) -> Any:
     """
     Generate X509 certificate from stored data.
     """
-    certificate = await get_certificate(db=db, certificate_id=certificate_id)
+    certificate = get_certificate(db=db, certificate_id=certificate_id)
     if not certificate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -131,21 +138,21 @@ async def generate_certificate(
             detail="Certificate already generated",
         )
     
-    certificate = await generate_x509_certificate(db=db, certificate=certificate)
+    certificate = generate_x509_certificate(db=db, certificate=certificate)
     return certificate
 
 
 @router.get("/{certificate_id}/private-key", response_model=CertificateWithPrivateKey)
-async def get_certificate_with_private_key(
+def get_certificate_with_private_key(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     certificate_id: int,
 ) -> Any:
     """
     Get certificate with private key.
     This endpoint should be properly secured in production.
     """
-    certificate = await get_certificate(db=db, certificate_id=certificate_id)
+    certificate = get_certificate(db=db, certificate_id=certificate_id)
     if not certificate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

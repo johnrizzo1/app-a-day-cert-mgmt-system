@@ -1,24 +1,40 @@
-from typing import AsyncGenerator
+from typing import Generator
+from contextlib import contextmanager
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 
 from app.core.config import settings
 
-engine = create_async_engine(str(settings.DATABASE_URL), echo=settings.DEBUG)
-AsyncSessionLocal = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+# Convert async URL to sync URL (remove +asyncpg if present)
+sync_url = str(settings.DATABASE_URL)
+if '+asyncpg' in sync_url:
+    sync_url = sync_url.replace('+asyncpg', '')
+
+# Create synchronous engine and session
+engine = create_engine(
+    sync_url,
+    echo=settings.DEBUG,
+    pool_pre_ping=True
 )
 
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+# Synchronous session dependency
+def get_db() -> Generator[Session, None, None]:
     """
-    Dependency for getting async DB session
+    Dependency for getting DB session
     """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()

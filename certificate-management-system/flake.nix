@@ -163,53 +163,53 @@
           };
 
           # Shell hook for additional setup
-          enterShell = ''
-            echo 'Setting up development environment...'
-            # Initialize Poetry environment if needed
-            if [ ! -f "backend/poetry.lock" ]; then
-              echo "Initializing Poetry environment..."
-              cd backend && poetry install
-              cd ..
-            fi
+          # enterShell = ''
+          #   echo 'Setting up development environment...'
+          #   # Initialize Poetry environment if needed
+          #   if [ ! -f "backend/poetry.lock" ]; then
+          #     echo "Initializing Poetry environment..."
+          #     cd backend && poetry install
+          #     cd ..
+          #   fi
             
-            # Use Poetry for Python environment
-            alias python="poetry run python"
-            alias pytest="poetry run pytest"
-            alias alembic="poetry run alembic"
+          #   # Use Poetry for Python environment
+          #   alias python="poetry run python"
+          #   alias pytest="poetry run pytest"
+          #   alias alembic="poetry run alembic"
             
-            # Define helper functions
-            function run-dev {
-              cd backend && poetry run hypercorn app.main:app --reload --bind 0.0.0.0:8000
-            }
+          #   # Define helper functions
+          #   function run-dev {
+          #     cd backend && poetry run hypercorn app.main:app --reload --bind 0.0.0.0:8000
+          #   }
             
-            function run-tests {
-              cd backend && poetry run pytest
-            }
+          #   function run-tests {
+          #     cd backend && poetry run pytest
+          #   }
             
-            function create-migration {
-              cd backend && poetry run alembic revision --autogenerate -m "$1"
-            }
+          #   function create-migration {
+          #     cd backend && poetry run alembic revision --autogenerate -m "$1"
+          #   }
             
-            function apply-migrations {
-              cd backend && poetry run alembic upgrade head
-            }
+          #   function apply-migrations {
+          #     cd backend && poetry run alembic upgrade head
+          #   }
             
-            function build-app {
-              cd backend && poetry build
-            }
+          #   function build-app {
+          #     cd backend && poetry build
+          #   }
             
-            # Print welcome message
-            echo "Certificate Management System - Development Environment"
-            echo "======================================================="
-            echo "Available commands:"
-            echo "  devenv up          - Start all services"
-            echo "  run-dev            - Run the backend development server"
-            echo "  run-tests          - Run backend tests"
-            echo "  create-migration   - Create a new database migration"
-            echo "  apply-migrations   - Apply database migrations"
-            echo "  build-app          - Build the backend application"
-            echo ""
-          '';
+          #   # Print welcome message
+          #   echo "Certificate Management System - Development Environment"
+          #   echo "======================================================="
+          #   echo "Available commands:"
+          #   echo "  devenv up          - Start all services"
+          #   echo "  run-dev            - Run the backend development server"
+          #   echo "  run-tests          - Run backend tests"
+          #   echo "  create-migration   - Create a new database migration"
+          #   echo "  apply-migrations   - Apply database migrations"
+          #   echo "  build-app          - Build the backend application"
+          #   echo ""
+          # '';
         };
       };
     };

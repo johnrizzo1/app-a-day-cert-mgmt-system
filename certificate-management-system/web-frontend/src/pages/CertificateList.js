@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Row, Col, Card, Button, Badge, Pagination, Alert } from 'react-bootstrap';
+import { Row, Col, Card, Button, Badge, Pagination, Alert, Modal } from 'react-bootstrap';
 import { certificateApi } from '../services/api';
 
 const CertificateList = () => {
@@ -9,29 +9,60 @@ const CertificateList = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [certificateToDelete, setCertificateToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const limit = 10;
 
-  useEffect(() => {
-    const fetchCertificates = async () => {
-      try {
-        setLoading(true);
-        const data = await certificateApi.getAll(page, limit);
-        setCertificates(data.certificates);
-        setTotalPages(Math.ceil(data.total / limit));
-        setError(null);
-      } catch (err) {
-        setError('Failed to fetch certificates. Please try again later.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchCertificates = async () => {
+    try {
+      setLoading(true);
+      const data = await certificateApi.getAll(page, limit);
+      setCertificates(data.certificates);
+      setTotalPages(Math.ceil(data.total / limit));
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch certificates. Please try again later.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCertificates();
   }, [page]);
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
+  };
+
+  const handleDeleteClick = (certificate) => {
+    setCertificateToDelete(certificate);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!certificateToDelete) return;
+    
+    try {
+      setDeleteLoading(true);
+      await certificateApi.delete(certificateToDelete.id);
+      setShowDeleteModal(false);
+      setCertificateToDelete(null);
+      // Refresh the certificate list
+      await fetchCertificates();
+    } catch (err) {
+      setError('Failed to delete certificate. Please try again later.');
+      console.error(err);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setCertificateToDelete(null);
   };
 
   const getStatusBadge = (status) => {
@@ -112,7 +143,7 @@ const CertificateList = () => {
                       {new Date(certificate.not_valid_after).toLocaleDateString()}
                     </Card.Text>
                   </Card.Body>
-                  <Card.Footer>
+                  <Card.Footer className="d-flex justify-content-between">
                     <Button
                       as={Link}
                       to={`/certificates/${certificate.id}`}
@@ -120,6 +151,13 @@ const CertificateList = () => {
                       size="sm"
                     >
                       View Details
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={() => handleDeleteClick(certificate)}
+                    >
+                      Delete
                     </Button>
                   </Card.Footer>
                 </Card>
@@ -132,6 +170,26 @@ const CertificateList = () => {
           </div>
         </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={handleDeleteCancel} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete the certificate for{' '}
+          <strong>{certificateToDelete?.common_name}</strong>?
+          This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleDeleteCancel} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteConfirm} disabled={deleteLoading}>
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

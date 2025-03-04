@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declared_attr
 
 from app.db.base import Base
 
@@ -40,7 +41,10 @@ class CertificateExtension(Base):
     certificate_id = Column(Integer, ForeignKey("certificates.id"), nullable=False)
     oid = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
-    value = Column(JSONB, nullable=False)
+    
+    # Use JSON type for SQLite compatibility in tests
+    value = Column(JSON, nullable=False)
+            
     critical = Column(Boolean, default=False)
 
-    certificate = relationship("Certificate", back_populates="extensions")
+    certificate = relationship("Certificate", back_populates="extensions", lazy="selectin")

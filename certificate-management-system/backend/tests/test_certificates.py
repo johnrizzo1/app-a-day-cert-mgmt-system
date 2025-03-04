@@ -8,8 +8,12 @@ from app.models.certificate import Certificate
 from app.services.certificate_service import create_certificate
 from app.schemas.certificate import CertificateCreate
 
+# Import the helper function
+from .conftest import with_greenlet_context
+
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_create_certificate(client: AsyncClient, db_session: AsyncSession):
     # Create certificate data
     certificate_data = {
@@ -41,6 +45,7 @@ async def test_create_certificate(client: AsyncClient, db_session: AsyncSession)
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_read_certificates(client: AsyncClient, db_session: AsyncSession):
     # Create test certificates
     for i in range(3):
@@ -74,6 +79,7 @@ async def test_read_certificates(client: AsyncClient, db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_read_certificate(client: AsyncClient, db_session: AsyncSession):
     # Create test certificate
     certificate_in = CertificateCreate(
@@ -104,6 +110,7 @@ async def test_read_certificate(client: AsyncClient, db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_update_certificate(client: AsyncClient, db_session: AsyncSession):
     # Create test certificate
     certificate_in = CertificateCreate(
@@ -141,6 +148,7 @@ async def test_update_certificate(client: AsyncClient, db_session: AsyncSession)
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_delete_certificate(client: AsyncClient, db_session: AsyncSession):
     # Create test certificate
     certificate_in = CertificateCreate(
@@ -172,6 +180,7 @@ async def test_delete_certificate(client: AsyncClient, db_session: AsyncSession)
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_generate_x509_certificate(client: AsyncClient, db_session: AsyncSession):
     """Test the X.509 certificate generation functionality"""
     # Create test certificate

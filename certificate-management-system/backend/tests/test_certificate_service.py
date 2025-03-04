@@ -13,8 +13,12 @@ from app.services.certificate_service import (
     get_certificate
 )
 
+# Import the helper function
+from .conftest import with_greenlet_context
+
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_create_certificate_service(db_session: AsyncSession):
     """Test the create_certificate service function"""
     # Create certificate data
@@ -47,6 +51,7 @@ async def test_create_certificate_service(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_generate_x509_certificate_service(db_session: AsyncSession):
     """Test the generate_x509_certificate service function"""
     # Create certificate data
@@ -111,6 +116,7 @@ async def test_generate_x509_certificate_service(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+@with_greenlet_context
 async def test_generate_x509_certificate_with_missing_fields(db_session: AsyncSession):
     """Test generating a certificate with some optional fields missing"""
     # Create certificate with minimal fields

@@ -39,7 +39,7 @@ app.include_router(api_router, prefix="/api")
 FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
 
 @app.get("/")
-async def root():
+def root():
     return {
         "message": "Welcome to the Certificate Management System API",
         "docs": "/api/docs",
