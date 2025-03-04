@@ -9,7 +9,7 @@ packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 alembic = "^1.10.3"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 fastapi = "^0.95.0"
 greenlet = "^3.0.3"
 hypercorn = "^0.15.0"
